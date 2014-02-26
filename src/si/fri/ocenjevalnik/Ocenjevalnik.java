@@ -1,6 +1,5 @@
 package si.fri.ocenjevalnik;
 
-
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.io.ByteArrayOutputStream;
@@ -24,6 +23,8 @@ import java.util.Vector;
 import java.util.prefs.Preferences;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.DefaultListModel;
 import javax.swing.JFileChooser;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
@@ -37,19 +38,17 @@ import jsyntaxpane.DefaultSyntaxKit;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
-
-
 /**
  *
  * @author tomaz
  */
 public class Ocenjevalnik extends javax.swing.JFrame {
+
   static final String tmpDir = "ocTmpRun";
   static final String resDir = "viri";
-  
+  static final String datasetFilename = "_datasets";
   private final static String stars = "************************************************\n";
-  
-  
+  Datasets datasets; // datasets for this project
   static final String oceneFileName = "_ocene";
   static final String locilo = "\t";
   static final String newline = "<br>";
@@ -58,11 +57,12 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   String trenutnaDatoteka = null;
   String vpisnaStevilka = null;
   HashMap<String, Student> studenti;
-
   RunResults rr;
-  
+
   public Ocenjevalnik() {
     initComponents();
+
+    datasets = new Datasets();
 
     studenti = new HashMap<String, Student>();
 
@@ -84,7 +84,7 @@ public class Ocenjevalnik extends javax.swing.JFrame {
 	poisciTekstInPostaviKurzor();
       }
     });
-    
+
     rr = new RunResults(this, false);
   }
 
@@ -133,6 +133,36 @@ public class Ocenjevalnik extends javax.swing.JFrame {
     } else {
       ustvariNovoTabeloZOcenami();
       shraniOcene();
+    }
+  }
+
+  void preberiDatasets() {
+    File f = new File(currentDir, datasetFilename);
+    datasets.readFromFile(f);
+
+    fillCombo();
+  }
+
+  void shraniDatasets() {
+    File f = new File(currentDir, datasetFilename);
+    datasets.writeToFile(f);
+  }
+
+  private void fillCombo() {
+    DefaultComboBoxModel dcm = new DefaultComboBoxModel(datasets.getData().toArray());
+    jComboBox1.setModel(dcm);
+
+    if (dcm.getSize() > 0) {
+      jComboBox1.setSelectedIndex(0);
+    }
+    prenesiPodatkeIzComba();
+  }
+
+  void prenesiPodatkeIzComba() {
+    Dataset ds = (Dataset) jComboBox1.getSelectedItem();
+    if (ds != null) {
+      agrsTF.setText(ds.args);
+      stdinTA.setText(ds.stdInput);
     }
   }
 
@@ -212,6 +242,7 @@ public class Ocenjevalnik extends javax.swing.JFrame {
 
       naloziDatoteke();
       preberiOcene();
+      preberiDatasets();
     }
   }
 
@@ -408,9 +439,10 @@ public class Ocenjevalnik extends javax.swing.JFrame {
     return "";
   }
 
-  private void runCurrentFile() {
-    rr.show();rr.clear();
-    
+  private void runCurrentFile(boolean runDatasets) {
+    rr.show();
+    rr.clear();
+
     String source = kodaTP.getText();
     String regex = "public\\sclass\\s(\\S*)\\s";
     Matcher matcher = Pattern.compile(regex).matcher(source);
@@ -421,17 +453,18 @@ public class Ocenjevalnik extends javax.swing.JFrame {
       className = "";
     }
 
-    
+
     rr.title(className);
-    
+
     // remove package declaration
     source = source.replaceAll("package\\s+([^;]*);", "");
- 
+
     // remove System.exit()
     source = source.replaceAll("System.exit\\s*\\(\\s*[0-9]+\\s*\\);", "");
 
     if (className.isEmpty()) {
-      rr.addTextNL("Ne najdem imena razreda."); return;
+      rr.addTextNL("Ne najdem imena razreda.");
+      return;
     } else {
       // check for tmp folder, delete ...
       File tmp = new File(tmpDir);
@@ -447,14 +480,14 @@ public class Ocenjevalnik extends javax.swing.JFrame {
       tmp.mkdir();
 
       // copy resources from res folder to tmp/res folder
-      File resSrc  = new File(currentDir, resDir);
-      File resDest = new File(tmpDir, resDir); 
+      File resSrc = new File(currentDir, resDir);
+      File resDest = new File(tmpDir, resDir);
       try {
 	FileUtils.copyDirectory(resSrc, resDest);
       } catch (IOException ex) {
 	rr.addTextNL("Can not copy resuorce folder to tmp folder");
       }
-      
+
       // write source into java file in tmp folder
       File src = new File(tmp, className + ".java");
       try {
@@ -462,50 +495,72 @@ public class Ocenjevalnik extends javax.swing.JFrame {
 	pw.print(source);
 	pw.close();
       } catch (FileNotFoundException ex) {
-	rr.addText("Ne morem pisati v datoteko " + src.getAbsolutePath()); return;
+	rr.addText("Ne morem pisati v datoteko " + src.getAbsolutePath());
+	return;
       }
 
       // compile
-      rr.addText(stars + "Compile: javac "+className + ".java\n"+stars);
+      rr.addText(stars + "Compile: javac " + className + ".java\n" + stars);
       String errorCompile = compile(tmpDir, new String[]{src.getName()}, tmpDir, new String[]{tmpDir}, "");
 
       if (!errorCompile.isEmpty()) {
-	rr.addText("\n\n" + errorCompile); return;
+	rr.addText("\n\n" + errorCompile);
+	return;
       }
-      
+
       rr.addTextNL("OK");
-      
+
       try {
-	rr.addTextNL("\n\n"+stars + "Running: java "+className + " " +agrsTF.getText() + "\n");
-	
-        URLClassLoader parentclassLoader = (URLClassLoader) Thread.currentThread().getContextClassLoader();
-        URL[] parentURLs = parentclassLoader.getURLs();
+	int numberOfRuns = 1;
+	if (runDatasets) {
+	  numberOfRuns = datasets.getData().size();
+	}
+        
+	String mainArgs[];
+	InputStream mojIN;
+	for (int iRun = 0; iRun < numberOfRuns; iRun++) {
 
-        URL[] urls = new URL[parentURLs.length + 1];
-        for (int i = 0; i < urls.length - 1; i++) {
-  	  urls[i] = parentURLs[i];
-        }
-        urls[urls.length - 1] = new File(tmpDir).toURI().toURL();
+	  String argsString;
+	  String stdinString;
+	  if (runDatasets) {
+	    argsString  = datasets.getData().get(iRun).args;
+	    stdinString = datasets.getData().get(iRun).stdInput;
+	  } else {
+	    argsString  = agrsTF.getText();
+	    stdinString = stdinTA.getText();
+	  }
+	  
+	  mainArgs = argsString.split(" ");
+	  mojIN    = IOUtils.toInputStream(stdinString);
+	  System.setIn(mojIN);
 
-        URLClassLoader classLoader = URLClassLoader.newInstance(urls);
+	  rr.addTextNL("\n\n" + stars + "Running: java " + className + " " + argsString + "\n");
 
-        Class c = Class.forName(className, true, classLoader); 
-        Class[] argTypes = new Class[] { String[].class };
-      
-      Method main = c.getDeclaredMethod("main", argTypes);
-      
-      String mainArgs[] = agrsTF.getText().split(" ");
-      
-      InputStream mojIN = IOUtils.toInputStream(stdinTF.getText());
-      System.setIn(mojIN);
-      
-      ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      System.setOut(new PrintStream(bos));
-       
-      main.invoke(null, (Object)mainArgs);
-      
-      rr.addTextNL("\n" + bos.toString());
-      
+	  URLClassLoader parentclassLoader = (URLClassLoader) Thread.currentThread().getContextClassLoader();
+	  URL[] parentURLs = parentclassLoader.getURLs();
+
+	  URL[] urls = new URL[parentURLs.length + 1];
+	  for (int i = 0; i < urls.length - 1; i++) {
+	    urls[i] = parentURLs[i];
+	  }
+	  urls[urls.length - 1] = new File(tmpDir).toURI().toURL();
+
+	  URLClassLoader classLoader = URLClassLoader.newInstance(urls);
+
+	  Class c = Class.forName(className, true, classLoader);
+	  Class[] argTypes = new Class[]{String[].class};
+
+	  Method main = c.getDeclaredMethod("main", argTypes);
+
+	  ByteArrayOutputStream bos = new ByteArrayOutputStream();
+	  System.setOut(new PrintStream(bos));
+
+	  main.invoke(null, (Object) mainArgs);
+
+	  rr.addTextNL("\n" + bos.toString());
+
+	}
+
       } catch (Exception ex) {
 	rr.addText("Execution error: " + ex.getCause().toString());
       }
@@ -551,7 +606,13 @@ public class Ocenjevalnik extends javax.swing.JFrame {
     agrsTF = new javax.swing.JTextField();
     jButton2 = new javax.swing.JButton();
     jLabel7 = new javax.swing.JLabel();
-    stdinTF = new javax.swing.JTextField();
+    jButton3 = new javax.swing.JButton();
+    jComboBox1 = new javax.swing.JComboBox();
+    jLabel8 = new javax.swing.JLabel();
+    jLabel9 = new javax.swing.JLabel();
+    jScrollPane5 = new javax.swing.JScrollPane();
+    stdinTA = new javax.swing.JTextArea();
+    jButton4 = new javax.swing.JButton();
     sPanel = new javax.swing.JPanel();
     jLabel2 = new javax.swing.JLabel();
     jScrollPane3 = new javax.swing.JScrollPane();
@@ -724,7 +785,10 @@ public class Ocenjevalnik extends javax.swing.JFrame {
 
     jLabel6.setText("Arguments ");
     gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 1;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
     runPanel.add(jLabel6, gridBagConstraints);
 
     agrsTF.addActionListener(new java.awt.event.ActionListener() {
@@ -733,8 +797,11 @@ public class Ocenjevalnik extends javax.swing.JFrame {
       }
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 1;
     gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
     gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
     runPanel.add(agrsTF, gridBagConstraints);
 
     jButton2.setText("Run");
@@ -745,23 +812,82 @@ public class Ocenjevalnik extends javax.swing.JFrame {
     });
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 2;
-    gridBagConstraints.gridy = 0;
+    gridBagConstraints.gridy = 1;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
-    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 5);
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 5);
     runPanel.add(jButton2, gridBagConstraints);
 
     jLabel7.setText("Stdin");
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 0;
-    gridBagConstraints.gridy = 1;
+    gridBagConstraints.gridy = 2;
     gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
     runPanel.add(jLabel7, gridBagConstraints);
+
+    jButton3.setText("Uredi");
+    jButton3.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        jButton3ActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 2;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_END;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 5);
+    runPanel.add(jButton3, gridBagConstraints);
+
+    jComboBox1.addItemListener(new java.awt.event.ItemListener() {
+      public void itemStateChanged(java.awt.event.ItemEvent evt) {
+        jComboBox1ItemStateChanged(evt);
+      }
+    });
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 1;
-    gridBagConstraints.gridy = 1;
+    gridBagConstraints.gridy = 0;
     gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
     gridBagConstraints.weightx = 1.0;
-    runPanel.add(stdinTF, gridBagConstraints);
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
+    runPanel.add(jComboBox1, gridBagConstraints);
+
+    jLabel8.setText("jLabel8");
+    runPanel.add(jLabel8, new java.awt.GridBagConstraints());
+
+    jLabel9.setText("Datasets");
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 0;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
+    runPanel.add(jLabel9, gridBagConstraints);
+
+    jScrollPane5.setMinimumSize(new java.awt.Dimension(23, 75));
+
+    stdinTA.setColumns(20);
+    stdinTA.setRows(2);
+    jScrollPane5.setViewportView(stdinTA);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 1;
+    gridBagConstraints.gridy = 2;
+    gridBagConstraints.fill = java.awt.GridBagConstraints.HORIZONTAL;
+    gridBagConstraints.weightx = 1.0;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 5, 0);
+    runPanel.add(jScrollPane5, gridBagConstraints);
+
+    jButton4.setText("RunAll");
+    jButton4.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        jButton4ActionPerformed(evt);
+      }
+    });
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 2;
+    gridBagConstraints.gridy = 2;
+    gridBagConstraints.anchor = java.awt.GridBagConstraints.FIRST_LINE_END;
+    gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
+    runPanel.add(jButton4, gridBagConstraints);
 
     gridBagConstraints = new java.awt.GridBagConstraints();
     gridBagConstraints.gridx = 2;
@@ -978,16 +1104,36 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   }//GEN-LAST:event_jButton1ActionPerformed
 
   private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-    runCurrentFile();
+    runCurrentFile(false);
   }//GEN-LAST:event_jButton2ActionPerformed
 
   private void jMenuItem5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItem5ActionPerformed
-    runCurrentFile();
+    runCurrentFile(false);
   }//GEN-LAST:event_jMenuItem5ActionPerformed
 
   private void agrsTFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_agrsTFActionPerformed
     // TODO add your handling code here:
   }//GEN-LAST:event_agrsTFActionPerformed
+
+  private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+    DatasetEditor dse = new DatasetEditor(this, true);
+    dse.setDataSet(datasets);
+    dse.setVisible(true);
+    if (!dse.canceled) {
+      datasets = dse.getDatasets();
+      shraniDatasets();
+
+      fillCombo();
+    }
+  }//GEN-LAST:event_jButton3ActionPerformed
+
+  private void jComboBox1ItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_jComboBox1ItemStateChanged
+    prenesiPodatkeIzComba();
+  }//GEN-LAST:event_jComboBox1ItemStateChanged
+
+  private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
+    runCurrentFile(true);
+  }//GEN-LAST:event_jButton4ActionPerformed
 
   /**
    * @param args the command line arguments
@@ -1015,6 +1161,9 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   private javax.swing.JTextField iskaniNizTF;
   private javax.swing.JButton jButton1;
   private javax.swing.JButton jButton2;
+  private javax.swing.JButton jButton3;
+  private javax.swing.JButton jButton4;
+  private javax.swing.JComboBox jComboBox1;
   private javax.swing.JLabel jLabel1;
   private javax.swing.JLabel jLabel2;
   private javax.swing.JLabel jLabel3;
@@ -1022,6 +1171,8 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   private javax.swing.JLabel jLabel5;
   private javax.swing.JLabel jLabel6;
   private javax.swing.JLabel jLabel7;
+  private javax.swing.JLabel jLabel8;
+  private javax.swing.JLabel jLabel9;
   private javax.swing.JMenu jMenu1;
   private javax.swing.JMenu jMenu2;
   private javax.swing.JMenuBar jMenuBar1;
@@ -1036,6 +1187,7 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   private javax.swing.JScrollPane jScrollPane2;
   private javax.swing.JScrollPane jScrollPane3;
   private javax.swing.JScrollPane jScrollPane4;
+  private javax.swing.JScrollPane jScrollPane5;
   private javax.swing.JSplitPane jSplitPane1;
   private javax.swing.JSplitPane jSplitPane2;
   private javax.swing.JEditorPane kodaTP;
@@ -1046,7 +1198,7 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   private javax.swing.JPanel sPanel;
   private javax.swing.JPanel statusPanel;
   private javax.swing.JTextArea statusTA;
-  private javax.swing.JTextField stdinTF;
+  private javax.swing.JTextArea stdinTA;
   private javax.swing.JTextField vpisnaTF;
   private javax.swing.JPanel zPanel;
   // End of variables declaration//GEN-END:variables

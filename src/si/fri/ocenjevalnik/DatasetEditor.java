@@ -2,6 +2,7 @@ package si.fri.ocenjevalnik;
 
 
 
+import java.io.File;
 import javax.swing.DefaultListModel;
 import javax.swing.JOptionPane;
 import javax.swing.event.DocumentEvent;
@@ -17,7 +18,8 @@ import javax.swing.event.DocumentListener;
  * @author tomaz
  */
 public class DatasetEditor extends javax.swing.JDialog {
-
+  public boolean canceled = true; // was this dialog canceled?
+  
   Datasets datasets;
   
   
@@ -29,6 +31,8 @@ public class DatasetEditor extends javax.swing.JDialog {
     super(parent, modal);
     initComponents();
     
+    setTitle("Dataset editor");
+    
     datasets = new Datasets();
     
     DocumentListener sl = new DocumentListener() {
@@ -38,6 +42,8 @@ public class DatasetEditor extends javax.swing.JDialog {
     };
     argsTF. getDocument().addDocumentListener(sl);
     stdinTA.getDocument().addDocumentListener(sl);
+    
+    setLocation(200,200);
   }
   
 
@@ -101,6 +107,7 @@ public class DatasetEditor extends javax.swing.JDialog {
   private void initComponents() {
     java.awt.GridBagConstraints gridBagConstraints;
 
+    jButton3 = new javax.swing.JButton();
     jLabel1 = new javax.swing.JLabel();
     jScrollPane1 = new javax.swing.JScrollPane();
     jList1 = new javax.swing.JList();
@@ -112,6 +119,11 @@ public class DatasetEditor extends javax.swing.JDialog {
     jPanel1 = new javax.swing.JPanel();
     jButton1 = new javax.swing.JButton();
     jButton2 = new javax.swing.JButton();
+    jPanel2 = new javax.swing.JPanel();
+    jButton4 = new javax.swing.JButton();
+    jButton5 = new javax.swing.JButton();
+
+    jButton3.setText("jButton3");
 
     setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
     getContentPane().setLayout(new java.awt.GridBagLayout());
@@ -123,6 +135,9 @@ public class DatasetEditor extends javax.swing.JDialog {
     gridBagConstraints.anchor = java.awt.GridBagConstraints.LINE_START;
     gridBagConstraints.insets = new java.awt.Insets(5, 5, 0, 0);
     getContentPane().add(jLabel1, gridBagConstraints);
+
+    jScrollPane1.setMinimumSize(new java.awt.Dimension(100, 23));
+    jScrollPane1.setPreferredSize(new java.awt.Dimension(100, 132));
 
     jList1.setMinimumSize(new java.awt.Dimension(100, 20));
     jList1.setPreferredSize(new java.awt.Dimension(100, 20));
@@ -206,6 +221,28 @@ public class DatasetEditor extends javax.swing.JDialog {
     gridBagConstraints.anchor = java.awt.GridBagConstraints.PAGE_START;
     getContentPane().add(jPanel1, gridBagConstraints);
 
+    jButton4.setText("OK");
+    jButton4.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        jButton4ActionPerformed(evt);
+      }
+    });
+    jPanel2.add(jButton4);
+
+    jButton5.setText("Cancel");
+    jButton5.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        jButton5ActionPerformed(evt);
+      }
+    });
+    jPanel2.add(jButton5);
+
+    gridBagConstraints = new java.awt.GridBagConstraints();
+    gridBagConstraints.gridx = 0;
+    gridBagConstraints.gridy = 4;
+    gridBagConstraints.gridwidth = 4;
+    getContentPane().add(jPanel2, gridBagConstraints);
+
     pack();
   }// </editor-fold>//GEN-END:initComponents
 
@@ -232,6 +269,16 @@ public class DatasetEditor extends javax.swing.JDialog {
       programChange = false;
     }
   }//GEN-LAST:event_jList1ValueChanged
+
+  private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
+    canceled = false;
+    setVisible(false);
+  }//GEN-LAST:event_jButton4ActionPerformed
+
+  private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
+    canceled = true;
+    setVisible(false);
+  }//GEN-LAST:event_jButton5ActionPerformed
 
   /**
    * @param args the command line arguments
@@ -278,11 +325,15 @@ public class DatasetEditor extends javax.swing.JDialog {
   private javax.swing.JTextField argsTF;
   private javax.swing.JButton jButton1;
   private javax.swing.JButton jButton2;
+  private javax.swing.JButton jButton3;
+  private javax.swing.JButton jButton4;
+  private javax.swing.JButton jButton5;
   private javax.swing.JLabel jLabel1;
   private javax.swing.JLabel jLabel2;
   private javax.swing.JLabel jLabel3;
   private javax.swing.JList jList1;
   private javax.swing.JPanel jPanel1;
+  private javax.swing.JPanel jPanel2;
   private javax.swing.JScrollPane jScrollPane1;
   private javax.swing.JScrollPane jScrollPane2;
   private javax.swing.JTextArea stdinTA;
