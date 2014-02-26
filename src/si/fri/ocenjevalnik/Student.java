@@ -1,3 +1,5 @@
+package si.fri.ocenjevalnik;
+
 /**
  *
  * @author tomaz
