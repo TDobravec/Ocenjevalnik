@@ -44,7 +44,7 @@ import org.apache.commons.io.IOUtils;
  */
 public class Ocenjevalnik extends javax.swing.JFrame {
 
-  static final String tmpDir = "ocTmpRun";
+  static final String tmpDirSuffix = "tmp";
   static final String resDir = "viri";
   static final String datasetFilename = "_datasets";
   private final static String stars = "************************************************\n";
@@ -442,6 +442,8 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   private void runCurrentFile(boolean runDatasets) {
     rr.show();
     rr.clear();
+    
+    String tmpDir = currentDir + File.separator + tmpDirSuffix;
 
     String source = kodaTP.getText();
     String regex = "public\\sclass\\s(\\S*)\\s";
