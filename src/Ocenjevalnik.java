@@ -1,5 +1,4 @@
 
-import com.sun.tracing.dtrace.ArgsAttributes;
 import java.awt.Toolkit;
 import java.awt.event.KeyEvent;
 import java.io.ByteArrayOutputStream;
@@ -45,20 +44,6 @@ import org.apache.commons.io.IOUtils;
  *
  * @author tomaz
  */
-class Student {
-
-  public String vpisna;
-  public String ocena;
-  public String komentar;
-
-  public Student(String vpisna) {
-    this.vpisna = vpisna;
-
-    ocena = "0";
-    komentar = "";
-  }
-}
-
 public class Ocenjevalnik extends javax.swing.JFrame {
   static final String tmpDir = "ocTmpRun";
   static final String resDir = "viri";
