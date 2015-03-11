@@ -289,9 +289,9 @@ public class Ocenjevalnik extends javax.swing.JFrame {
 
   String getVpisnaStevilka(String fName) {
     String polja[] = fName.split("_");
-    if (polja.length >= 2) {
-      System.out.println(polja[1]);
-      return polja[1];
+    if (polja.length >= 4) {
+      System.out.println(polja[3]);
+      return polja[3];
     } else {
       return null;
     }
@@ -378,6 +378,43 @@ public class Ocenjevalnik extends javax.swing.JFrame {
       }
     }
   }
+  
+  void pogojnoNastaviOceno() {
+    if (currentDir == null) {
+      setStatus("Najprej odpri projekt!");
+    } else {
+      PogojnoNastaviDialog pnd = new PogojnoNastaviDialog(this, true);
+      pnd.setVisible(true);
+      if (pnd.buttonPressed == 1) return; // Cancel 
+      
+      OdgovorPND odgovor = pnd.getResult();
+      for (Student s : studenti.values()) {
+         String kje = odgovor.kdo.equals("ocena") ? s.ocena : s.komentar;
+         String kaj = odgovor.kaj;
+         boolean vsebuje = false;
+         if (odgovor.operator.equals("vsebuje")) {
+           vsebuje = kje.contains(kaj);
+         } else
+           vsebuje = kje.equals(kaj);
+         if (odgovor.negacija)
+           vsebuje = !vsebuje;
+         
+         if (vsebuje) {
+           String novo = "";
+           if (!odgovor.operacija.equals("nastavi"))
+             novo = odgovor.komu.equals("oceno") ? s.ocena : s.komentar;
+           
+           novo = novo + odgovor.vKaj;
+           if (odgovor.komu.equals("oceno"))
+	      s.ocena = novo;
+           else
+             s.komentar = novo;
+         }
+      }
+      prikaziOcenoTrenutnegaStudenta();
+    }
+  }
+  
 
   void naslednjaNaloga() {
     int s = nalogeList.getSelectedIndex();
@@ -628,6 +665,7 @@ public class Ocenjevalnik extends javax.swing.JFrame {
     jMenuItem1 = new javax.swing.JMenuItem();
     jMenu2 = new javax.swing.JMenu();
     jMenuItem3 = new javax.swing.JMenuItem();
+    jMenuItem6 = new javax.swing.JMenuItem();
     jMenuItem4 = new javax.swing.JMenuItem();
     jMenuItem5 = new javax.swing.JMenuItem();
 
@@ -999,6 +1037,14 @@ public class Ocenjevalnik extends javax.swing.JFrame {
     });
     jMenu2.add(jMenuItem3);
 
+    jMenuItem6.setText("Pogojno nastavi...");
+    jMenuItem6.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        jMenuItem6ActionPerformed(evt);
+      }
+    });
+    jMenu2.add(jMenuItem6);
+
     jMenuItem4.setText("Dodaj besedilo v komentar");
     jMenuItem4.addActionListener(new java.awt.event.ActionListener() {
       public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -1137,6 +1183,10 @@ public class Ocenjevalnik extends javax.swing.JFrame {
     runCurrentFile(true);
   }//GEN-LAST:event_jButton4ActionPerformed
 
+  private void jMenuItem6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItem6ActionPerformed
+     pogojnoNastaviOceno();
+  }//GEN-LAST:event_jMenuItem6ActionPerformed
+
   /**
    * @param args the command line arguments
    */
@@ -1183,6 +1233,7 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   private javax.swing.JMenuItem jMenuItem3;
   private javax.swing.JMenuItem jMenuItem4;
   private javax.swing.JMenuItem jMenuItem5;
+  private javax.swing.JMenuItem jMenuItem6;
   private javax.swing.JPanel jPanel1;
   private javax.swing.JPanel jPanel2;
   private javax.swing.JScrollPane jScrollPane1;
