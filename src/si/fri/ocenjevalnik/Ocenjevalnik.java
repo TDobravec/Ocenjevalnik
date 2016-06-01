@@ -16,6 +16,8 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
@@ -89,14 +91,23 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   }
 
   void naloziDatoteke() {
-    Vector<String> naloge = new Vector();
+    ArrayList<String> naloge = new ArrayList();
+  
     String datoteke[] = currentDir.list();
     for (String ime : datoteke) {
       if (!(ime.startsWith(".") || ime.startsWith("_"))) {
 	naloge.add(ime);
       }
     }
-    JList tmpList = new JList(naloge);
+    Collections.sort(naloge, new Comparator<String>() {
+      @Override
+      public int compare(String o1, String o2) {        
+        return o1.compareToIgnoreCase(o2);
+      }      
+    }
+    );
+    
+    JList tmpList = new JList(new Vector(naloge));
     nalogeList.setModel(tmpList.getModel());
   }
 
@@ -121,7 +132,10 @@ public class Ocenjevalnik extends javax.swing.JFrame {
 	    prebrani++;
 	    Student s = new Student(polja[0]);
 	    s.ocena = polja[1];
-	    s.komentar = polja.length == 3 ? polja[2] : "";
+            String komentar = "";
+            for (int i=2; i<polja.length; i++)
+              komentar+=polja[i] + " "; 
+	    s.komentar = komentar;
 	    studenti.put(polja[0], s);
 	  }
 	}
@@ -288,10 +302,10 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   }
 
   String getVpisnaStevilka(String fName) {
-    String polja[] = fName.split("_");
-    if (polja.length >= 4) {
-      System.out.println(polja[3]);
-      return polja[3];
+    String polja[] = fName.split("[_=]");
+    if (polja.length >= 2) {
+      System.out.println(polja[1]);
+      return polja[1];
     } else {
       return null;
     }
@@ -593,7 +607,7 @@ public class Ocenjevalnik extends javax.swing.JFrame {
 
 	  ByteArrayOutputStream bos = new ByteArrayOutputStream();
 	  System.setOut(new PrintStream(bos));
-
+//3 /Users/Tomaz/Desktop/N14/tmp/viri/slo.txt /Users/Tomaz/Desktop/N14/tmp/viri/xx.txt          
 	  main.invoke(null, (Object) mainArgs);
 
 	  rr.addTextNL("\n" + bos.toString());
@@ -602,6 +616,7 @@ public class Ocenjevalnik extends javax.swing.JFrame {
 
       } catch (Exception ex) {
 	rr.addText("Execution error: " + ex.getCause().toString());
+        ex.printStackTrace();
       }
     }
   }
