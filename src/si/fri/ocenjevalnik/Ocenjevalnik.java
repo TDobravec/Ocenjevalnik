@@ -60,6 +60,8 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   String vpisnaStevilka = null;
   HashMap<String, Student> studenti;
   RunResults rr;
+  
+  String vpisnaStevilkaRegex="[_=],2";  
 
   public Ocenjevalnik() {
     initComponents();
@@ -72,6 +74,8 @@ public class Ocenjevalnik extends javax.swing.JFrame {
 
     DefaultSyntaxKit.initKit();
     kodaTP.setContentType("text/java");
+    
+    vpisnaStevilkaRegex = Preferences.userNodeForPackage(this.getClass()).get("Ocenjevalnik.regex", vpisnaStevilkaRegex);
 
     iskaniNizTF.getDocument().addDocumentListener(new DocumentListener() {
       public void insertUpdate(DocumentEvent e) {
@@ -205,6 +209,10 @@ public class Ocenjevalnik extends javax.swing.JFrame {
     addStatus(String.format("Dodanih je bilo %d studentov.", stNum));
   }
 
+  static String brezTab(String besedilo) {
+    return besedilo.replaceAll("\t", " ");
+  }
+  
   void shraniOcene() {
     File oceneFile = new File(currentDir, oceneFileName);
     try {
@@ -212,7 +220,7 @@ public class Ocenjevalnik extends javax.swing.JFrame {
       pw.println(glavaCSV);
 
       for (Student s : studenti.values()) {
-	pw.printf("%s%s%s%s%s\n", s.vpisna, locilo, s.ocena, locilo, s.komentar);
+	pw.printf("%s%s%s%s%s\n", s.vpisna, locilo, s.ocena, locilo, brezTab(s.komentar));
       }
       pw.close();
     } catch (Exception e) {
@@ -302,12 +310,20 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   }
 
   String getVpisnaStevilka(String fName) {
-    String polja[] = fName.split("[_=]");
-    if (polja.length >= 2) {
-      System.out.println(polja[1]);
-      return polja[1];
+    String[] vpisnaRegexPart = vpisnaStevilkaRegex.split(",");
+    if (vpisnaRegexPart.length != 2) return fName;
+    String regex = vpisnaRegexPart[0];
+    int polje = 0;
+    try {
+      polje = Integer.parseInt(vpisnaRegexPart[1]);
+    }  catch (Exception e) {}
+    
+    String polja[] = fName.split(regex);
+    if (polja.length >= polje) {
+      // System.out.println(polja[1]);
+      return polja[polje];
     } else {
-      return null;
+      return fName;
     }
 
   }
@@ -607,7 +623,6 @@ public class Ocenjevalnik extends javax.swing.JFrame {
 
 	  ByteArrayOutputStream bos = new ByteArrayOutputStream();
 	  System.setOut(new PrintStream(bos));
-//3 /Users/Tomaz/Desktop/N14/tmp/viri/slo.txt /Users/Tomaz/Desktop/N14/tmp/viri/xx.txt          
 	  main.invoke(null, (Object) mainArgs);
 
 	  rr.addTextNL("\n" + bos.toString());
@@ -683,6 +698,7 @@ public class Ocenjevalnik extends javax.swing.JFrame {
     jMenuItem6 = new javax.swing.JMenuItem();
     jMenuItem4 = new javax.swing.JMenuItem();
     jMenuItem5 = new javax.swing.JMenuItem();
+    jMenuItem7 = new javax.swing.JMenuItem();
 
     setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
     setTitle("Ocenjevalnik");
@@ -708,7 +724,7 @@ public class Ocenjevalnik extends javax.swing.JFrame {
 
     zPanel.setLayout(new java.awt.GridBagLayout());
 
-    jLabel5.setText("Vpisna");
+    jLabel5.setText("ID");
     jLabel5.setMinimumSize(new java.awt.Dimension(70, 20));
     jLabel5.setPreferredSize(new java.awt.Dimension(70, 20));
     gridBagConstraints = new java.awt.GridBagConstraints();
@@ -1077,6 +1093,14 @@ public class Ocenjevalnik extends javax.swing.JFrame {
     });
     jMenu2.add(jMenuItem5);
 
+    jMenuItem7.setText("Doloèi regex za vpisno številko...");
+    jMenuItem7.addActionListener(new java.awt.event.ActionListener() {
+      public void actionPerformed(java.awt.event.ActionEvent evt) {
+        jMenuItem7ActionPerformed(evt);
+      }
+    });
+    jMenu2.add(jMenuItem7);
+
     jMenuBar1.add(jMenu2);
 
     setJMenuBar(jMenuBar1);
@@ -1202,6 +1226,23 @@ public class Ocenjevalnik extends javax.swing.JFrame {
      pogojnoNastaviOceno();
   }//GEN-LAST:event_jMenuItem6ActionPerformed
 
+  private void jMenuItem7ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jMenuItem7ActionPerformed
+    String curRegex = Preferences.userNodeForPackage(this.getClass()).get("Ocenjevalnik.regex", vpisnaStevilkaRegex);
+    
+    String question = "Vpiši regex za split in številko polja vpisne številke v imenu datoteke (format: regex,stevilka_polja).\nOpomba: regex lahko nastavis le novemu projektu (t.j. projektu, za katerega datoteka _ocene še ne obstaja).\nRegex nastavi PRED odpiranjem projekta; morebitno datoteko _ocene pred spremembo regexa POBRISI!";
+    
+    curRegex = JOptionPane.showInputDialog(question, curRegex);
+    if (curRegex!=null && !curRegex.equals(vpisnaStevilkaRegex)) {
+      String[] regexPolja = curRegex.split(",");
+      if (regexPolja.length != 2) {
+        JOptionPane.showMessageDialog(rootPane, "Napaèen format vpisa (pravilen format: regex,stevilka_polja)");
+        return;
+      }
+      vpisnaStevilkaRegex = curRegex;
+      Preferences.userNodeForPackage(this.getClass()).put("Ocenjevalnik.regex", vpisnaStevilkaRegex);
+    }
+  }//GEN-LAST:event_jMenuItem7ActionPerformed
+
   /**
    * @param args the command line arguments
    */
@@ -1249,6 +1290,7 @@ public class Ocenjevalnik extends javax.swing.JFrame {
   private javax.swing.JMenuItem jMenuItem4;
   private javax.swing.JMenuItem jMenuItem5;
   private javax.swing.JMenuItem jMenuItem6;
+  private javax.swing.JMenuItem jMenuItem7;
   private javax.swing.JPanel jPanel1;
   private javax.swing.JPanel jPanel2;
   private javax.swing.JScrollPane jScrollPane1;

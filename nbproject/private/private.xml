@@ -13,5 +13,9 @@
         <group name="P2-2016"/>
         <group name="ALGator"/>
         <group name="Java"/>
+        <group name="P2-201617">
+            <file>file:/Users/Tomaz/Dropbox/FRI/Sources/Java/Ocenjevalnik/src/si/fri/ocenjevalnik/RunResults.java</file>
+            <file>file:/Users/Tomaz/Dropbox/FRI/Sources/Java/Ocenjevalnik/src/si/fri/ocenjevalnik/Ocenjevalnik.java</file>
+        </group>
     </open-files>
 </project-private>
